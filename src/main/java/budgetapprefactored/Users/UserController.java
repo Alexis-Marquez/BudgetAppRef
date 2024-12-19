@@ -1,10 +1,10 @@
 package budgetapprefactored.Users;
 
+import budgetapprefactored.Exceptions.DuplicateCategoryException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Budgets.Category;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,40 +23,69 @@ public class UserController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<Optional<User>> getUser(@PathVariable String userId){
-        return new ResponseEntity<>(userService.getUserByUserId(userId), HttpStatus.OK);
+
+        Optional<User> userByUserId = userService.getUserByUserId(userId);
+        if(userByUserId.isPresent()){
+            return new ResponseEntity<>(userByUserId, HttpStatus.OK);
+        }else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @GetMapping("/{userId}/categories")
     public ResponseEntity<List<Category>> getAvailableCategories(@PathVariable String userId){
-        return new ResponseEntity<>(userService.getAvailableCategories(userId), HttpStatus.OK);
+        List<Category> availableCategories = userService.getAvailableCategories(userId);
+        if(availableCategories.isEmpty()){
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }else {
+            return new ResponseEntity<>(availableCategories, HttpStatus.OK);
+        }
     }
 
     @PostMapping("/{userId}/add-category")
-    public ResponseEntity<Optional<Category>> addCategory(@PathVariable String userId, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<Optional<Category>> addCategory(@PathVariable String userId, @RequestBody Map<String, String> payload) throws DuplicateCategoryException {
+        if (!payload.containsKey("name")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        String name = payload.get("name");
+        BigDecimal total = payload.containsKey("total") ? new BigDecimal(payload.get("total")) : BigDecimal.ZERO;
+
         Optional<Category> category;
-        if (payload.containsKey("name")) {
-            if (payload.containsKey("total")) {
-                category = userService.addCategory(userId, new BigDecimal(payload.get("total")), payload.get("name"));
-            }
-            category = userService.addCategory(userId, BigDecimal.ZERO, payload.get("name"));
-        } else {
-            category = Optional.empty();
+        try {
+            category = userService.addCategory(userId, total, name);
+        } catch (DuplicateCategoryException e) {
+            return new ResponseEntity<>(HttpStatus.CONFLICT);
         }
+
         if (category.isPresent()) {
-            return new ResponseEntity<Optional<Category>>(category, HttpStatus.CREATED);
+            return new ResponseEntity<>(category, HttpStatus.CREATED);
         }
-        return new ResponseEntity<Optional<Category>>(HttpStatus.BAD_REQUEST);
+
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-    @PatchMapping("/{userId}/modify-budget/{newTotal}/{monthYear}") //Only use when creating the first month budget of a new account or when modifying the current budget limit
-    public ResponseEntity<Boolean> modifyBudget(@PathVariable String userId, @PathVariable BigDecimal newTotal, @PathVariable YearMonth monthYear){
-        boolean budget = userService.createBudget(userId, newTotal, monthYear);
-        if (budget) {
-            return new ResponseEntity<>(true, HttpStatus.ACCEPTED);
-        }else{
-            return new ResponseEntity<>(false, HttpStatus.BAD_REQUEST);
+
+    @PatchMapping("/{userId}/modify-budget/{newTotal}/{monthYear}")
+    public ResponseEntity<String> modifyBudget(
+            @PathVariable String userId,
+            @PathVariable BigDecimal newTotal,
+            @PathVariable YearMonth monthYear) throws UserNotFoundException {
+        boolean success;
+        try{
+           success = userService.createBudget(userId, newTotal, monthYear);
+        }catch (UserNotFoundException e){
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
+        }
+        if (success) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                    .body("Budget successfully modified for " + monthYear);
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Failed to modify budget. input is invalid.");
         }
     }
+
 
 }
 

@@ -1,16 +1,15 @@
 package budgetapprefactored.Transactions;
 
-import budgetapprefactored.Accounts.AccountService;
+import budgetapprefactored.Accounts.*;
 import budgetapprefactored.Budgets.Budget;
 import budgetapprefactored.Budgets.BudgetService;
 import budgetapprefactored.Budgets.Category;
+import budgetapprefactored.Exceptions.CategoryNotFoundException;
+import budgetapprefactored.Exceptions.EmptyBudgetException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Users.User;
 import budgetapprefactored.Users.UserService;
-import budgetapprefactored.Accounts.Account;
 import com.mongodb.BasicDBObject;
-import budgetapprefactored.Transactions.Transaction;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -48,48 +47,75 @@ public class TransactionService {
         this.userService = userService;
     }
 
-    public Optional<Transaction> createTransaction(BigDecimal amount, String accountId, String userId, LocalDate time, String name, String description, String category, String type) throws AccountNotFoundException {
+    public Optional<Transaction> createTransaction(BigDecimal amount, String accountId, String userId, LocalDate time, String name, String description, String category, Transaction.TransactionType type) throws AccountNotFoundException, UserNotFoundException, EmptyBudgetException, CategoryNotFoundException {
         Optional<Account> curr = accountService.singleAccount(accountId);
         if(curr.isEmpty()){
-            return Optional.empty();
+            throw new AccountNotFoundException();
         }
+
         Optional<User> currUser = userService.getUserByUserId(userId);
         if(currUser.isEmpty()){
-            return Optional.empty();
+            throw new UserNotFoundException("User with ID " + userId + " does not exist.");
         }
-        Transaction transaction = transactionRepository.insert(new Transaction(accountId, userId, time, amount,name,curr.get().getName(),description, category, type));
-            mongoTemplate.update(User.class)
-                    .matching(Criteria.where("userId").is(userId))
-                    .apply(new Update().push("transactionList").value(transaction))
-                    .first();
-            accountUpdater(accountId,amount,type);
-            if(type.equals("expense")){
-                budgetUpdater(userId,amount, YearMonth.from(time), currUser.get());
-                categoryUpdater(userId, amount, category , YearMonth.from(time), currUser.get().getBudgetMonthTotal()); //Needs fixing
-            }
-            return Optional.of(transaction);
+
+        Transaction transaction = transactionRepository.insert(new Transaction(accountId, userId, time, amount, name, curr.get().getName(), description, category, type));
+
+        mongoTemplate.update(User.class)
+                .matching(Criteria.where("userId").is(userId))
+                .apply(new Update().push("transactionList").value(transaction))
+                .first();
+
+        accountUpdater(accountId, amount, type);
+
+        if (type == Transaction.TransactionType.EXPENSE) {
+            budgetUpdater(userId, amount, YearMonth.from(time), currUser.get());
+            categoryUpdater(userId, amount, category, YearMonth.from(time), currUser.get().getBudgetMonthTotal());
+        }
+
+        return Optional.of(transaction);
     }
 
-    private void categoryUpdater(String userId, BigDecimal amount, String category, YearMonth monthYear, BigDecimal total) {
-        List<Category> categories = budgetService.getBudgetByUserIdAndMonthYear(userId, monthYear).get().getCategories();
-        for(Category c : categories ){
-            if(c.getName().equals(category)){
-                c.setBalance(c.getBalance().add(amount.abs()));
-                mongoTemplate.updateFirst(new Query().addCriteria(Criteria.where("userId").is(userId)), new Update().pull("categories",new BasicDBObject("name", category)), Budget.class);
-                mongoTemplate.updateFirst(new Query().addCriteria(Criteria.where("userId").is(userId)), new Update().push("categories", c), Budget.class);
-                return;
+
+    private void categoryUpdater(String userId, BigDecimal amount, String category, YearMonth monthYear, BigDecimal total) throws EmptyBudgetException, CategoryNotFoundException {
+        Optional<Budget> budgetOptional = budgetService.getBudgetByUserIdAndMonthYear(userId, monthYear);
+
+        if (budgetOptional.isEmpty()) {
+            throw new EmptyBudgetException("User has no budgets");
+        }
+        List<Category> categories = budgetOptional.get().getCategories();
+        Category categoryToUpdate = null;
+        for (Category c : categories) {
+            if (c.getName().equals(category)) {
+                categoryToUpdate = c;
+                break;
             }
         }
-        mongoTemplate.updateFirst(new Query().addCriteria(Criteria.where("userId").is(userId)), new Update().push("categories", new Category(category, total, userId)), Budget.class);
+        if (categoryToUpdate != null) {
+            categoryToUpdate.setBalance(categoryToUpdate.getBalance().add(amount.abs()));
+            mongoTemplate.updateFirst(
+                    new Query().addCriteria(Criteria.where("userId").is(userId)),
+                    new Update().pull("categories", new BasicDBObject("name", category)),
+                    Budget.class
+            );
+
+            mongoTemplate.updateFirst(
+                    new Query().addCriteria(Criteria.where("userId").is(userId)),
+                    new Update().push("categories", categoryToUpdate),
+                    Budget.class
+            );
+        } else {
+            throw new CategoryNotFoundException("Category "+ category+" not found");
+        }
     }
 
-    private void accountUpdater(String accountId, BigDecimal amount, String type){
+
+    private void accountUpdater(String accountId, BigDecimal amount, Transaction.TransactionType type){
         Query queryAccountUpdate = new Query(new Criteria("accountId").is(accountId));
         BigDecimal currTotal = accountService.singleAccount(accountId).orElseThrow().getBalance();
         Update updateOpBalanceAccount = new Update().set("balance", currTotal.add(amount));
         mongoTemplate.updateFirst(queryAccountUpdate, updateOpBalanceAccount, Account.class);
     }
-    private Optional<Budget> budgetUpdater(String userId, BigDecimal amount, YearMonth monthYear, User currUser){
+    private Optional<Budget> budgetUpdater(String userId, BigDecimal amount, YearMonth monthYear, User currUser) throws UserNotFoundException {
         Optional<Budget> currBudget = budgetService.getBudgetByUserIdAndMonthYear(currUser.getUserId(), monthYear);
        if(currBudget.isEmpty()){
            userService.createBudget(userId, currUser.getBudgetMonthTotal(), monthYear);

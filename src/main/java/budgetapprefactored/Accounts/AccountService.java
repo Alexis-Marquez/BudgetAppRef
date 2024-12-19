@@ -1,8 +1,9 @@
 package budgetapprefactored.Accounts;
 
+import budgetapprefactored.Exceptions.DuplicateAccountException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Transactions.TransactionRepository;
 import budgetapprefactored.Users.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;

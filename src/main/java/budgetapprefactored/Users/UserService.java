@@ -1,16 +1,16 @@
 package budgetapprefactored.Users;
 
+import budgetapprefactored.Exceptions.DuplicateCategoryException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Budgets.Budget;
 import budgetapprefactored.Budgets.BudgetRepository;
 import budgetapprefactored.Budgets.BudgetService;
 import budgetapprefactored.Budgets.Category;
 import com.mongodb.client.result.UpdateResult;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +36,7 @@ public class UserService {
     }
     private static final String MONTHLY_CRON = "0 0 0 1 * *";
     @Scheduled(cron = MONTHLY_CRON) // Run on the 1st day of each month
-    public void scheduleMonthlyAddBudget() {
+    public void scheduleMonthlyAddBudget() throws UserNotFoundException {
         List<User> users = userRepository.findAll();
         for (User user : users) {
             this.createBudget(user.getUserId(), user.getBudgetMonthTotal(), YearMonth.now());
@@ -75,9 +75,9 @@ public class UserService {
 
 
     @Transactional
-    public boolean createBudget(String userId, BigDecimal newTotal, YearMonth yearMonth) {
+    public boolean createBudget(String userId, BigDecimal newTotal, YearMonth yearMonth) throws UserNotFoundException {
         Optional<User> userOpt = userRepository.findUserByUserId(userId);
-        if (userOpt.isEmpty()) return false;
+        if (userOpt.isEmpty()) throw new UserNotFoundException("User with ID " + userId + " does not exist.");
 
         updateBudgetMonthTotal(userId, newTotal);
 
@@ -116,12 +116,12 @@ public class UserService {
     }
 
     @Transactional
-    public Optional<Category> addCategory(String userId, BigDecimal total, String name) {
+    public Optional<Category> addCategory(String userId, BigDecimal total, String name) throws DuplicateCategoryException {
         Optional<Budget> budget = budgetRepository.findBudgetByUserIdAndMonthYear(userId, YearMonth.now().toString());
         if (budget.isPresent()) {
             Budget currentBudget = budget.get();
             if (currentBudget.getCategories().stream().anyMatch(c -> c.getName().equals(name))) {
-                return Optional.empty();
+                throw new DuplicateCategoryException("Category "+ name+" already exists.");
             }
             Category value = new Category(name, total, userId);
             mongoTemplate.update(Budget.class)

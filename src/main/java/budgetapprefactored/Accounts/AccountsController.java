@@ -1,12 +1,13 @@
 package budgetapprefactored.Accounts;
 
+import budgetapprefactored.Exceptions.DuplicateAccountException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.login.AccountNotFoundException;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @RestController
