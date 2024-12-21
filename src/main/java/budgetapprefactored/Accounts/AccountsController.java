@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.login.AccountNotFoundException;
+import java.net.UnknownServiceException;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,17 +21,15 @@ public class AccountsController {
     }
 
     @DeleteMapping("accounts/{id}")
-    public ResponseEntity<Void> deleteAccountById(@PathVariable String id) throws AccountNotFoundException {
+    public ResponseEntity<Void> deleteAccountById(@PathVariable String id, @PathVariable String userId) throws AccountNotFoundException {
         try {
-            boolean deleted = accountService.deleteAccountById(id);
-            if (deleted) {
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-            } else {
-                return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-            }
+            accountService.deleteAccountById(id);
         }catch (AccountNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }catch (UnknownServiceException e){
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
 
@@ -43,7 +42,7 @@ public class AccountsController {
     @GetMapping("/accounts/{id}")
     public ResponseEntity<Account> getSingleAccount(@PathVariable String id, @PathVariable String userId){
         Optional<Account> account = accountService.singleAccountByUserId(id, userId);
-        return account.map(value -> new ResponseEntity<>(value, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        return account.map(account1 -> new ResponseEntity<>(account1, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     @PostMapping("accounts/new-account")

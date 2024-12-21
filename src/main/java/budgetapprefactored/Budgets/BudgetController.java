@@ -13,10 +13,16 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/{userId}")
 public class BudgetController {
-    @Autowired
-    private BudgetService budgetService;
+    private final BudgetService budgetService;
+
+    public BudgetController(BudgetService budgetService) {
+        this.budgetService = budgetService;
+    }
+
     @GetMapping("/latestBudget")
     public ResponseEntity<Optional<Budget>> getLatestBudget(@PathVariable String userId){
-        return new ResponseEntity<>(budgetService.getBudgetByUserId(userId), HttpStatus.OK);
+
+        Optional<Budget> currentBudget = budgetService.getBudgetByUserId(userId);
+        return currentBudget.map(budget -> new ResponseEntity<>(currentBudget, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 }

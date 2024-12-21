@@ -13,6 +13,7 @@ import budgetapprefactored.Users.User;
 
 import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
+import java.net.UnknownServiceException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -82,15 +83,17 @@ public class AccountService {
 
 
     @Transactional
-    public boolean deleteAccountById(String id) throws AccountNotFoundException {
+    public void deleteAccountById(String id) throws AccountNotFoundException, UnknownServiceException {
         Optional<Account> account = accountRepository.findAccountByAccountId(id);
         if (account.isEmpty()) {
             throw new AccountNotFoundException("Account with ID " + id + " not found.");
         }
-        transactionRepository.deleteAllByAccountId(id);
-
-        accountRepository.deleteAccountByAccountId(id);
-        return false;
+        try {
+            transactionRepository.deleteAllByAccountId(id);
+            accountRepository.deleteAccountByAccountId(id);
+        }catch (Exception e){
+            throw new UnknownServiceException();
+        }
     }
 
 

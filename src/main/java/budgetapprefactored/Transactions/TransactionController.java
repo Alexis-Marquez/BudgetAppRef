@@ -1,16 +1,20 @@
 package budgetapprefactored.Transactions;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Arrays;
+
+import static budgetapprefactored.Transactions.Transaction.TransactionType.EXPENSE;
+import static budgetapprefactored.Transactions.Transaction.TransactionType.INCOME;
 
 @RestController
 @RequestMapping("/api/{userId}/transactions")
@@ -22,36 +26,78 @@ private final TransactionService transactionService;
         this.transactionService = transactionService;
     }
 
-    @PostMapping
-    public ResponseEntity<Optional<Transaction>> createTransaction(@RequestBody Map<String, String> payload, @PathVariable String userId) {
-    if(payload.containsKey("amount")&& payload.containsKey("accountId")&&payload.containsKey("name")&&payload.containsKey("type")&&payload.containsKey("dateTime")&&payload.containsKey("category")) {
-        if(payload.get("amount")==null&&payload.get("accountId")==null&&payload.get("name")==null&&payload.get("type")==null&&payload.get("dateTime")==null&&payload.get("category")==null) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-        String type = payload.get("type");
-        if(Objects.equals(type, "expense") || Objects.equals(type, "income")) {
-        try {
-            BigDecimal amount = new BigDecimal(payload.get("amount"));
-            Optional<Transaction> transaction = transactionService.createTransaction(amount,
-                    payload.get("accountId"), userId, LocalDate.parse(payload.get("dateTime")), payload.get("name"), payload.get("description"),
-                    payload.get("category"), type);
-            if(transaction.isPresent()) {
-                return new ResponseEntity<>(transaction, HttpStatus.CREATED);
+    @PostMapping()
+    public ResponseEntity<Optional<Transaction>> createTransaction(
+            @RequestBody Map<String, String> payload,
+            @PathVariable String userId) {
+
+        List<String> requiredFields = Arrays.asList("amount", "accountId", "name", "type", "dateTime", "category");
+
+        for (String field : requiredFields) {
+            if (!payload.containsKey(field) || payload.get(field).isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
             }
         }
-        catch (Exception e){
+
+        try {
+            BigDecimal amount = new BigDecimal(payload.get("amount"));
+            String accountId = payload.get("accountId");
+            String name = payload.get("name");
+            String description = payload.getOrDefault("description", "");
+            String category = payload.get("category");
+            LocalDate dateTime = LocalDate.parse(payload.get("dateTime"));
+            Transaction.TransactionType type;
+
+            try {
+                type = Transaction.TransactionType.valueOf(payload.get("type").toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST); // Invalid type
+            }
+
+            if (type != Transaction.TransactionType.EXPENSE && type != Transaction.TransactionType.INCOME) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+
+            Optional<Transaction> transaction = transactionService.createTransaction(
+                    amount, accountId, userId, dateTime, name, description, category, type);
+
+            return transaction.map(transaction1 -> new ResponseEntity<>(transaction,HttpStatus.CREATED)).orElseGet(()-> new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR));
+        } catch (NumberFormatException | DateTimeParseException e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        } catch (Exception e) {
             e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/{page}")
+    public ResponseEntity<List<Transaction>> getNextPageRecentTransactions(@PathVariable String userId, @PathVariable int page){
+        if (page < 1) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-    }}
-        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-}
-@GetMapping("/{page}")
-    public ResponseEntity<List<Transaction>> getNextPageRecentTransactions(@PathVariable String userId, @PathVariable int page){
-    return new ResponseEntity<>(transactionService.getNext5RecentTransactions(userId, page),HttpStatus.OK);
+        try {
+            List<Transaction> transactions = transactionService.getNext5RecentTransactions(userId, page);
+
+            if (transactions.isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+            }
+
+            return new ResponseEntity<>(transactions, HttpStatus.OK);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
 }
 @GetMapping("/size")
-    public ResponseEntity<String> getTransactionsSize(@PathVariable String userId){
-    return new ResponseEntity<>(String.valueOf(transactionService.getTransactionSize(userId)), HttpStatus.OK);
+    public ResponseEntity<Map<String,Integer>> getTransactionsSize(@PathVariable String userId){
+    try {
+        int transactionSize = transactionService.getTransactionSize(userId);
+
+        return new ResponseEntity<>(Map.of("transactionSize", transactionSize), HttpStatus.OK);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
 }
 }

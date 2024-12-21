@@ -16,6 +16,7 @@ import budgetapprefactored.Users.User;
 
 import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
+import java.net.UnknownServiceException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -57,7 +58,7 @@ public class AccountsTest {
     }
 
     @AfterEach
-    void tearDown() throws AccountNotFoundException {
+    void tearDown() throws AccountNotFoundException, UnknownServiceException {
         accountService.deleteAccountById(account.getAccountId());
         userService.deleteUserByUserId(user.getUserId());
     }
