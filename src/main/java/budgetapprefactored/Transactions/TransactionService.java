@@ -9,6 +9,7 @@ import budgetapprefactored.Exceptions.EmptyBudgetException;
 import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Users.User;
 import budgetapprefactored.Users.UserService;
+import budgetapprefactored.utils.EncryptionUtil;
 import com.mongodb.BasicDBObject;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +19,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -39,15 +41,18 @@ public class TransactionService {
 
     private final UserService userService;
 
-    public TransactionService(TransactionRepository transactionRepository, AccountService accountService, BudgetService budgetService, MongoTemplate mongoTemplate, UserService userService) {
+    private final EncryptionUtil encryptionUtil;
+
+    public TransactionService(TransactionRepository transactionRepository, AccountService accountService, BudgetService budgetService, MongoTemplate mongoTemplate, UserService userService, EncryptionUtil encryptionUtil) {
         this.transactionRepository = transactionRepository;
         this.accountService = accountService;
         this.budgetService = budgetService;
         this.mongoTemplate = mongoTemplate;
         this.userService = userService;
+        this.encryptionUtil = encryptionUtil;
     }
 
-    public Optional<Transaction> createTransaction(BigDecimal amount, String accountId, String userId, LocalDate time, String name, String description, String category, Transaction.TransactionType type) throws AccountNotFoundException, UserNotFoundException, EmptyBudgetException, CategoryNotFoundException {
+    public Optional<Transaction> createTransaction(BigDecimal amount, String accountId, String userId, LocalDate time, String name, String description, String category, Transaction.TransactionType type) throws Exception {
         Optional<Account> curr = accountService.singleAccount(accountId);
         if(curr.isEmpty()){
             throw new AccountNotFoundException();
@@ -109,7 +114,7 @@ public class TransactionService {
     }
 
 
-    private void accountUpdater(String accountId, BigDecimal amount, Transaction.TransactionType type){
+    private void accountUpdater(String accountId, BigDecimal amount, Transaction.TransactionType type) throws Exception {
         Query queryAccountUpdate = new Query(new Criteria("accountId").is(accountId));
         BigDecimal currTotal = accountService.singleAccount(accountId).orElseThrow().getBalance();
         Update updateOpBalanceAccount = new Update().set("balance", currTotal.add(amount));

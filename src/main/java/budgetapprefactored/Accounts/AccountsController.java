@@ -35,7 +35,12 @@ public class AccountsController {
 
     @GetMapping("/accounts")
     public ResponseEntity<List<Account>> getAllAccounts(@PathVariable String userId){
-        Optional<List<Account>> accounts = accountService.getAccountsByUserId(userId);
+        Optional<List<Account>> accounts;
+        try {
+             accounts = accountService.getAccountsByUserId(userId);
+        }catch (IllegalArgumentException e){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
         return accounts.map(accountList -> new ResponseEntity<>(accountList, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NO_CONTENT));
     }
 
@@ -61,6 +66,8 @@ public class AccountsController {
         }
         catch (DuplicateAccountException e){
             return new ResponseEntity<>(HttpStatus.CONFLICT);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 }

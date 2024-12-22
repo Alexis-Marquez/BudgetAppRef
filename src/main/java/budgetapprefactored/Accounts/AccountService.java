@@ -4,6 +4,7 @@ import budgetapprefactored.Exceptions.DuplicateAccountException;
 import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Transactions.TransactionRepository;
 import budgetapprefactored.Users.UserService;
+import budgetapprefactored.utils.EncryptionUtil;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Update;
@@ -24,12 +25,14 @@ public class AccountService {
     private final TransactionRepository transactionRepository;
     private final MongoTemplate mongoTemplate;
     private final UserService userService;
+    private final EncryptionUtil encryptionUtil;
 
-    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository, MongoTemplate mongoTemplate, UserService userService) {
+    public AccountService(AccountRepository accountRepository, TransactionRepository transactionRepository, MongoTemplate mongoTemplate, UserService userService, EncryptionUtil encryptionUtil) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.mongoTemplate = mongoTemplate;
         this.userService = userService;
+        this.encryptionUtil = encryptionUtil;
     }
 
     public Optional<List<Account>> getAccountsByUserId(String userId) {
@@ -57,7 +60,7 @@ public class AccountService {
 
     @Transactional
     public Optional<Account> createAccount(String userId, String type, String name, BigDecimal balance)
-            throws DuplicateAccountException, UserNotFoundException {
+            throws Exception {
         if (type == null || type.isBlank() || name == null || name.isBlank()) {
             throw new IllegalArgumentException("Account type and name must not be null or empty.");
         }

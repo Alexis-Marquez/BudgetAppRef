@@ -4,6 +4,7 @@ import budgetapprefactored.Accounts.Account;
 import budgetapprefactored.Accounts.AccountRepository;
 import budgetapprefactored.Accounts.AccountService;
 import budgetapprefactored.Users.UserService;
+import budgetapprefactored.utils.EncryptionUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,19 +36,21 @@ public class AccountsTest {
     private Account account;
 
     private User user;
+    private EncryptionUtil encryptionUtil;
+
     @Test
-    public void testConstructor(){
+    public void testConstructor() throws Exception {
         Account account = new Account("0000", "savings", "Test0", BigDecimal.ONE);
         assertNotNull(account);
     }
     @Test
-    public void testConstructor2(){
-        Account account = new Account("0000", "savings", "Test0", BigDecimal.ZERO);
+    public void testConstructor2() throws Exception {
+        Account account = new Account("0000", "savings", "Test0", BigDecimal.ONE);
         assertEquals(account.getBalance(), BigDecimal.ZERO);
     }
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         user = new User("test", "test@email.com", "pass");
         String userId = user.getUserId();
         account = accountRepository.insert(new Account("0000", "savings", "Test0", BigDecimal.ONE));
