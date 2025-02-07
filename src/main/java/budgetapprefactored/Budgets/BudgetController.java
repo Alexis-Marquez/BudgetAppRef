@@ -23,6 +23,6 @@ public class BudgetController {
     public ResponseEntity<Optional<Budget>> getLatestBudget(@PathVariable String userId){
 
         Optional<Budget> currentBudget = budgetService.getBudgetByUserId(userId);
-        return currentBudget.map(budget -> new ResponseEntity<>(currentBudget, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
+        return currentBudget.map(budget -> new ResponseEntity<>(currentBudget, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(currentBudget, HttpStatus.NO_CONTENT));
     }
 }

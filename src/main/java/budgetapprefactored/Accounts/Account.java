@@ -46,4 +46,8 @@ public class Account {
     public String getName() {
         return this.name;
     }
+
+    public String getAccountId() {
+        return this.accountId;
+    }
 }

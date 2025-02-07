@@ -79,7 +79,7 @@ private final TransactionService transactionService;
             List<Transaction> transactions = transactionService.getNext5RecentTransactions(userId, page);
 
             if (transactions.isEmpty()) {
-                return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+                return new ResponseEntity<>(transactions, HttpStatus.NO_CONTENT);
             }
 
             return new ResponseEntity<>(transactions, HttpStatus.OK);
@@ -89,11 +89,11 @@ private final TransactionService transactionService;
         }
 }
 @GetMapping("/size")
-    public ResponseEntity<Map<String,Integer>> getTransactionsSize(@PathVariable String userId){
+    public ResponseEntity<Integer> getTransactionsSize(@PathVariable String userId){
     try {
         int transactionSize = transactionService.getTransactionSize(userId);
 
-        return new ResponseEntity<>(Map.of("transactionSize", transactionSize), HttpStatus.OK);
+        return new ResponseEntity<>(transactionSize, HttpStatus.OK);
 
     } catch (Exception e) {
         e.printStackTrace();

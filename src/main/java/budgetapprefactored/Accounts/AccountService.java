@@ -80,7 +80,6 @@ public class AccountService {
                 .matching(Criteria.where("userId").is(userId))
                 .apply(new Update().push("accountList", account))
                 .first();
-
         return Optional.of(account);
     }
 

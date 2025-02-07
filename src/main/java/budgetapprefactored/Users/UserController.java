@@ -65,7 +65,23 @@ public class UserController {
         return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
-
+    @PostMapping("/new-user")
+    public ResponseEntity<String> addUser(@RequestBody Map<String, String> payload) {
+        if (!payload.containsKey("name")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        String name = payload.get("name");
+        if (!payload.containsKey("password")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        String password = payload.get("password");
+        if(!payload.containsKey("email")){
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+        String email = payload.get("email");
+        User user = userService.createUser(name, email, password);
+        return new ResponseEntity<>(user.getUserId(), HttpStatus.CREATED);
+    }
     @PatchMapping("/{userId}/modify-budget/{newTotal}/{monthYear}")
     public ResponseEntity<String> modifyBudget(
             @PathVariable String userId,

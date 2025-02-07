@@ -7,9 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.security.auth.login.AccountNotFoundException;
+import java.math.BigDecimal;
 import java.net.UnknownServiceException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/{userId}")
@@ -41,7 +41,7 @@ public class AccountsController {
         }catch (IllegalArgumentException e){
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        return accounts.map(accountList -> new ResponseEntity<>(accountList, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(HttpStatus.NO_CONTENT));
+        return accounts.map(accountList -> new ResponseEntity<>(accountList, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(new ArrayList<>(),HttpStatus.NO_CONTENT));
     }
 
     @GetMapping("/accounts/{id}")
@@ -51,14 +51,18 @@ public class AccountsController {
     }
 
     @PostMapping("accounts/new-account")
-    public ResponseEntity<Account> createAccount(@RequestBody AccountRequest payload, @PathVariable String userId) {
+    public ResponseEntity<Account> createAccount(@RequestBody Map<String, String> payload, @PathVariable String userId) {
+        List<String> requiredFields = Arrays.asList("type", "name", "balance");
+        for (String field : requiredFields) {
+            if (!payload.containsKey(field) || payload.get(field).isEmpty()) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+        }
         try {
-            Optional<Account> account = accountService.createAccount(
-                    userId,
-                    payload.getType(),
-                    payload.getName(),
-                    payload.getBalance()
-            );
+            BigDecimal balance = new BigDecimal(payload.get("balance"));
+            String type = payload.get("type");
+            String name = payload.get("name");
+            Optional<Account> account = accountService.createAccount(userId, type, name, balance);
             return account.map(value -> new ResponseEntity<>(value, HttpStatus.CREATED))
                     .orElseGet(() -> new ResponseEntity<>(HttpStatus.BAD_REQUEST));
         } catch (UserNotFoundException e) {
