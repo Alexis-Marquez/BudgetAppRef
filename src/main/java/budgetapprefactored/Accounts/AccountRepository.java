@@ -19,7 +19,7 @@ public interface AccountRepository extends MongoRepository<Account, ObjectId> {
 
     Optional<Account> findAccountByAccountId(String id);
 
-    boolean deleteAccountByAccountId(String id);
+    void deleteAccountByAccountId(String accountId);
 
     boolean existsByUserIdAndName(String userId, String name);
 }

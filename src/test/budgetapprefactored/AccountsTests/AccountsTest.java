@@ -6,10 +6,7 @@ import budgetapprefactored.Accounts.AccountService;
 import budgetapprefactored.Users.UserService;
 import budgetapprefactored.utils.EncryptionUtil;
 import net.bytebuddy.utility.dispatcher.JavaDispatcher;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.util.TestPropertyValues;
@@ -55,19 +52,11 @@ public class AccountsTest {
         mongoDBContainer.start(); // Start MongoDB in a container
     }
 
-    static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-        @Override
-        public void initialize(ConfigurableApplicationContext context) {
-            TestPropertyValues.of(
-                    "spring.data.mongodb.uri=" + mongoDBContainer.getReplicaSetUrl()
-            ).applyTo(context.getEnvironment());
-        }
+    @DynamicPropertySource
+    static void configureProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
     }
 
-    @AfterEach
-    void cleanUpDatabase() {
-        mongoDBContainer.getDockerClient().killContainerCmd(mongoDBContainer.getContainerId());
-    }
 
     @Test
     public void testConstructor() throws Exception {
@@ -90,7 +79,8 @@ public class AccountsTest {
 
         assertNotNull(accountList, "Account list should not be null");
         assertFalse(accountList.isEmpty(), "Account list should not be empty");
-        assertTrue(accountList.contains(account), "Account list should contain the test account");
+        assertTrue(accountList.stream().anyMatch(acc -> acc.getAccountId().equals(account.getAccountId())),
+                "Account list should contain the test account by ID");
     }
 
 
@@ -101,11 +91,7 @@ public class AccountsTest {
         user = userService.createUser("test", "test@email.com", "pass");
         account = accountService.createAccount(user.getUserId(), "savings", "Test Account", BigDecimal.valueOf(100))
                 .orElseThrow(() -> new Exception("Account creation failed"));
-
-        mongoTemplate.update(User.class)
-                .matching(Criteria.where("userId").is(user.getUserId()))
-                .apply(new Update().push("accountList").value(account))
-                .first();
+        assertNotNull(userService.getUserByUserId(user.getUserId()), "User should be created before tests");
     }
 
 
@@ -117,6 +103,10 @@ public class AccountsTest {
         userService.deleteUserByUserId(user.getUserId());
     }
 
+    @AfterAll
+    static void stopContainer() {
+        mongoDBContainer.stop();
+    }
 
 
 }

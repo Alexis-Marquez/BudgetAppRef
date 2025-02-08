@@ -93,10 +93,11 @@ public class AccountService {
         try {
             transactionRepository.deleteAllByAccountId(id);
             accountRepository.deleteAccountByAccountId(id);
-        }catch (Exception e){
-            throw new UnknownServiceException();
+        } catch (Exception e) {
+            throw new UnknownServiceException("Failed to delete account: " + e.getMessage());
         }
     }
+
 
 
 }
