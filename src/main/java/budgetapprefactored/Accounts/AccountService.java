@@ -35,26 +35,37 @@ public class AccountService {
         this.encryptionUtil = encryptionUtil;
     }
 
-    public Optional<List<Account>> getAccountsByUserId(String userId) {
+    public List<Account> getAccountsByUserId(String userId) {
         if (userId == null || userId.isBlank()) {
             throw new IllegalArgumentException("User ID must not be null or empty.");
         }
-        List<Account> accounts = accountRepository.findAccountsByUserId(userId);
-        return accounts.isEmpty() ? Optional.empty() : Optional.of(accounts);
+        return accountRepository.findAccountsByUserId(userId);
     }
 
     public Optional<Account> singleAccountByUserId(String id, String userId){
         if (userId == null || userId.isBlank()) {
             throw new IllegalArgumentException("User ID must not be null or empty.");
         }
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("Account ID must not be null or empty.");
+        }
         return accountRepository.findAccountByAccountIdAndUserId(id, userId);
     }
 
     public Optional<Account> singleAccount(String id){
+        if (id == null || id.isBlank()) {
+            throw new IllegalArgumentException("Account ID must not be null or empty.");
+        }
         return accountRepository.findAccountByAccountId(id);
     }
 
-    public Optional<ArrayList<Account>> accountsByTypeAndUserId(String type, String userId){
+    public ArrayList<Account> accountsByTypeAndUserId(String type, String userId){
+        if (userId == null || userId.isBlank()) {
+            throw new IllegalArgumentException("User ID must not be null or empty.");
+        }
+        if (type == null || type.isBlank()) {
+            throw new IllegalArgumentException("Type must not be null or empty.");
+        }
         return accountRepository.findAccountsByTypeIgnoreCaseAndUserId(type, userId);
     }
 

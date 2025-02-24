@@ -24,6 +24,7 @@ import javax.security.auth.login.AccountNotFoundException;
 import java.math.BigDecimal;
 import org.springframework.context.ApplicationContextInitializer;
 import java.net.UnknownServiceException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -83,8 +84,80 @@ public class AccountsTest {
                 "Account list should contain the test account by ID");
     }
 
+    @Test
+    public void testGetAccountsByUserIdNoContent(){
+        assertThrows(IllegalArgumentException.class, () -> accountService.getAccountsByUserId(null));
+    }
 
+    @Test
+    public void testGetAccountsByUserId() throws Exception {
+        List<Account> accountList = accountService.getAccountsByUserId(user.getUserId());
+        assertNotNull(accountList, "Account list should not be null");
+        assertDoesNotThrow(()->accountService.createAccount(user.getUserId(), "test","name",BigDecimal.ONE));
+        assertFalse(accountList.isEmpty(), "Account list should not be empty");
+    }
 
+    @Test
+    public void testGetSingleAccount(){
+        Optional<Account> account1 = accountService.singleAccountByUserId(account.getAccountId(),user.getUserId());
+        assertTrue(account1.isPresent(), "Account should exist in the system");
+    }
+
+    @Test
+    public void testGetSingleAccount2() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> accountService.singleAccountByUserId(account.getAccountId(),null));
+    }
+
+    @Test
+    public void testGetSingleAccount3() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> accountService.singleAccountByUserId(null,null));
+    }
+    @Test
+    public void testGetSingleAccount4() throws Exception {
+        Optional<Account> account1 = accountService.singleAccount(account.getAccountId());
+        assertTrue(account1.isPresent(), "Account should exist in the system");
+    }
+
+    @Test
+    public void testGetSingleAccount5() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> accountService.singleAccount(null));
+    }
+
+    @Test
+    public void testGetSingleAccount6() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> accountService.singleAccount(""));
+    }
+
+    @Test
+    public void testGetSingleAccount7() throws Exception {
+        assertThrows(IllegalArgumentException.class, () -> accountService.singleAccountByUserId(null, user.getUserId()));
+    }
+
+    @Test
+    public void testAccountsByTypeAndUser(){
+        ArrayList<Account> accountList = accountService.accountsByTypeAndUserId("savings", user.getUserId());
+        assertNotNull(accountList, "Account list should not be null");
+        assertFalse(accountList.isEmpty(), "Expected non-empty account list");
+        assertTrue(accountList.stream().anyMatch(a -> a.getAccountId().equals(account.getAccountId())),
+                "Account list should contain an account with id " + account.getAccountId());
+    }
+
+    @Test
+    public void testAccountsByTypeAndUser2(){
+        assertThrows(IllegalArgumentException.class, ()->accountService.accountsByTypeAndUserId("savings", null));
+    }
+
+    @Test
+    public void testAccountsByTypeAndUser3(){
+        assertThrows(IllegalArgumentException.class, ()->accountService.accountsByTypeAndUserId(null, user.getUserId()));
+    }
+
+    @Test
+    public void testAccountsByTypeAndUser4(){
+        ArrayList<Account> accountList = accountService.accountsByTypeAndUserId("savings", "29382");
+        assertNotNull(accountList, "Account list should not be null");
+        assertTrue(accountList.isEmpty(), "Account list should be empty");
+    }
 
     @BeforeEach
     void setUp() throws Exception {

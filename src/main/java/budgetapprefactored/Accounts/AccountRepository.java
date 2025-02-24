@@ -11,7 +11,7 @@ import java.util.Optional;
 @Repository
 public interface AccountRepository extends MongoRepository<Account, ObjectId> {
 
-    Optional<ArrayList<Account>> findAccountsByTypeIgnoreCaseAndUserId(String type,String userId);
+    ArrayList<Account> findAccountsByTypeIgnoreCaseAndUserId(String type,String userId);
 
     Optional<Account> findAccountByAccountIdAndUserId(String accountId, String userId);
 

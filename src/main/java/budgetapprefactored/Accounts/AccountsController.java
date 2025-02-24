@@ -35,13 +35,13 @@ public class AccountsController {
 
     @GetMapping("/accounts")
     public ResponseEntity<List<Account>> getAllAccounts(@PathVariable String userId){
-        Optional<List<Account>> accounts;
+        List<Account> accounts;
         try {
              accounts = accountService.getAccountsByUserId(userId);
         }catch (IllegalArgumentException e){
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        return accounts.map(accountList -> new ResponseEntity<>(accountList, HttpStatus.OK)).orElseGet(() -> new ResponseEntity<>(new ArrayList<>(),HttpStatus.NO_CONTENT));
+        return new ResponseEntity<>(accounts, HttpStatus.OK);
     }
 
     @GetMapping("/accounts/{id}")
