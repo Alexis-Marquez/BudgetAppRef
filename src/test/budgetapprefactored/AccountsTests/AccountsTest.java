@@ -3,6 +3,8 @@ package budgetapprefactored.AccountsTests;
 import budgetapprefactored.Accounts.Account;
 import budgetapprefactored.Accounts.AccountRepository;
 import budgetapprefactored.Accounts.AccountService;
+import budgetapprefactored.Exceptions.DuplicateAccountException;
+import budgetapprefactored.Exceptions.UserNotFoundException;
 import budgetapprefactored.Users.UserService;
 import budgetapprefactored.utils.EncryptionUtil;
 import net.bytebuddy.utility.dispatcher.JavaDispatcher;
@@ -159,6 +161,51 @@ public class AccountsTest {
         assertTrue(accountList.isEmpty(), "Account list should be empty");
     }
 
+    @Test
+    public void testCreateAccount(){
+        assertThrows(UserNotFoundException.class, () -> accountService.createAccount("", "test","name",BigDecimal.ONE));
+    }
+
+    @Test
+    public void testCreateAccount2(){
+        assertThrows(IllegalArgumentException.class, () -> accountService.createAccount(user.getUserId(), "test","",BigDecimal.ONE));
+    }
+
+    @Test
+    public void testCreateAccount3(){
+        assertThrows(IllegalArgumentException.class, () -> accountService.createAccount(user.getUserId(), "","name",BigDecimal.ONE));
+    }
+
+    @Test
+    public void testCreateAccount4() throws Exception {
+        accountService.createAccount(user.getUserId(), "test","A",BigDecimal.ONE);
+        assertThrows(DuplicateAccountException.class, () -> accountService.createAccount(user.getUserId(), "test","A",BigDecimal.ONE));
+    }
+
+    @Test
+    public void testCreateAccount5(){
+        assertDoesNotThrow(()->accountService.createAccount(user.getUserId(), "test","A",null));
+    }
+
+    @Test
+    public void testDeleteAccount(){
+        assertThrows(AccountNotFoundException.class, ()->accountService.deleteAccountById("198320"));
+    }
+
+    @Test
+    public void testDeleteAccount2() throws Exception {
+
+        Optional<Account> newAcc = accountService.createAccount(user.getUserId(), "Savings", "A", BigDecimal.ONE);
+        if(newAcc.isPresent()){
+            String accID = newAcc.get().getAccountId();
+            accountService.deleteAccountById(accID);
+            assertTrue(accountService.singleAccount(accID).isEmpty(), "Account should have been deleted");
+        }
+        else{
+            fail("Account with id not created");
+        }
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         user = userService.createUser("test", "test@email.com", "pass");
@@ -173,6 +220,10 @@ public class AccountsTest {
         if (account != null) {
             accountService.deleteAccountById(account.getAccountId());
         }
+        if (user.getAccountList() != null && !user.getAccountList().isEmpty()) {
+        for(Account a: user.getAccountList()){
+            accountService.deleteAccountById(a.getAccountId());
+        }}
         userService.deleteUserByUserId(user.getUserId());
     }
 
